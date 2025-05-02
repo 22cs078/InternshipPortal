@@ -436,7 +436,7 @@ const GuideAllocationList = () => {
             )}
             
             {/* Show Deleted Toggle */}
-            <div className="flex items-center ml-auto">
+            {/* <div className="flex items-center ml-auto">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -449,7 +449,7 @@ const GuideAllocationList = () => {
                   Show Deleted Allocations
                 </span>
               </label>
-            </div>
+            </div> */}
           </div>
         </div>
         
