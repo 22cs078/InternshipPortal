@@ -8,9 +8,6 @@ import {
   LogOut,
   User,
   ChevronDown,
-  Clock,
-  Check,
-  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,8 +24,6 @@ const GuideLayout = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [username, setUsername] = useState("");
-  const [notifications, setNotifications] = useState([]);
-  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -39,12 +34,8 @@ const GuideLayout = ({ children }) => {
       setUsername(userData.guideName || "Guide");
     }
     fetchUnreadCount();
-    fetchRecentNotifications();
     
-    const interval = setInterval(() => {
-      fetchUnreadCount();
-      fetchRecentNotifications();
-    }, 30000);
+    const interval = setInterval(fetchUnreadCount, 30000);
     
     return () => clearInterval(interval);
   }, []);
@@ -60,41 +51,6 @@ const GuideLayout = ({ children }) => {
       }
     } catch (error) {
       console.error("Error fetching unread count:", error);
-    }
-  };
-
-  const fetchRecentNotifications = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_BASEURL}/api/notifications/recent`,
-        { withCredentials: true }
-      );
-      if (response.data.success) {
-        setNotifications(response.data.notifications);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
-  const markAsRead = async (notificationId) => {
-    try {
-      await axios.patch(
-        `${process.env.REACT_APP_BACKEND_BASEURL}/api/notifications/${notificationId}/read`,
-        {},
-        { withCredentials: true }
-      );
-      fetchUnreadCount();
-      fetchRecentNotifications();
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const handleNotificationClick = (notification) => {
-    markAsRead(notification._id);
-    if (notification.link) {
-      navigate(notification.link);
     }
   };
 
@@ -115,17 +71,6 @@ const GuideLayout = ({ children }) => {
     navigate("/guide/GuideProfile");
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case "WEEKLY_REPORT_SUBMISSION":
-        return <ClipboardList className="h-4 w-4 text-blue-600" />;
-      case "WEEKLY_REPORT_STATUS_CHANGE":
-        return <Check className="h-4 w-4 text-green-600" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Mobile Header */}
@@ -138,62 +83,19 @@ const GuideLayout = ({ children }) => {
           />
         </div>
         <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
-            >
-              <Bell size={20} className="text-gray-600" />
-              {notificationCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 text-white">
-                  {notificationCount}
-                </Badge>
-              )}
-            </Button>
-            {notificationDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-50 border border-gray-200">
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    <div className="divide-y">
-                      {notifications.map((notification) => (
-                        <div
-                          key={notification._id}
-                          className={`p-3 hover:bg-gray-100 cursor-pointer ${
-                            !notification.recipients[0]?.isRead ? "bg-blue-50" : ""
-                          }`}
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex items-start space-x-2">
-                            <div className="mt-1">
-                              {getNotificationIcon(notification.type)}
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm">
-                                {notification.title}
-                              </h4>
-                              <p className="text-xs text-gray-600">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center mt-1 text-xs text-gray-500">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {new Date(notification.createdAt).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center text-sm text-gray-500">
-                      No notifications
-                    </div>
-                  )}
-                </div>
-              </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={() => navigate("/guide/GuideNotificationsPage")}
+          >
+            <Bell size={20} className="text-gray-600" />
+            {notificationCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 text-white">
+                {notificationCount}
+              </Badge>
             )}
-          </div>
+          </Button>
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="p-2 focus:outline-none"
@@ -252,62 +154,19 @@ const GuideLayout = ({ children }) => {
 
         <div className="p-4">
           <div className="hidden lg:flex justify-between items-center mb-4">
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
-              >
-                <Bell size={20} className="text-gray-600" />
-                {notificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 text-white">
-                    {notificationCount}
-                  </Badge>
-                )}
-              </Button>
-              {notificationDropdownOpen && (
-                <div className="absolute right-0 bottom-full mb-2 w-80 bg-white rounded-md shadow-lg z-50 border border-gray-200">
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      <div className="divide-y">
-                        {notifications.map((notification) => (
-                          <div
-                            key={notification._id}
-                            className={`p-3 hover:bg-gray-100 cursor-pointer ${
-                              !notification.recipients[0]?.isRead ? "bg-blue-50" : ""
-                            }`}
-                            onClick={() => handleNotificationClick(notification)}
-                          >
-                            <div className="flex items-start space-x-2">
-                              <div className="mt-1">
-                                {getNotificationIcon(notification.type)}
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">
-                                  {notification.title}
-                                </h4>
-                                <p className="text-xs text-gray-600">
-                                  {notification.message}
-                                </p>
-                                <div className="flex items-center mt-1 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {new Date(notification.createdAt).toLocaleString()}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-center text-sm text-gray-500">
-                        No notifications
-                      </div>
-                    )}
-                  </div>
-                </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => navigate("/guide/GuideNotificationsPage")}
+            >
+              <Bell size={20} className="text-gray-600" />
+              {notificationCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 text-white">
+                  {notificationCount}
+                </Badge>
               )}
-            </div>
+            </Button>
           </div>
 
           <DropdownMenu
@@ -340,7 +199,7 @@ const GuideLayout = ({ children }) => {
         </div>
       </aside>
 
-      <main className="flex-1 lg:min-h-screen bg-gray-50 mt-16 lg:mt-0">
+      <main className="flex-1 lg:min-h-screen bg-gray-50 mt-20 lg:mt-0">
         {children}
       </main>
     </div>

@@ -840,7 +840,7 @@ const GuideWeeklyReports = () => {
           </div>
 
           {/* Toggle to show/hide deleted records */}
-          <div className="flex items-center mb-4">
+          {/* <div className="flex items-center mb-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -852,7 +852,7 @@ const GuideWeeklyReports = () => {
                 Show Deleted Records
               </span>
             </label>
-          </div>
+          </div> */}
 
           {/* Table */}
           <div className="border rounded-md overflow-hidden shadow-sm">
