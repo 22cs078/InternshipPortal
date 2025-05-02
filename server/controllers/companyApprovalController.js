@@ -255,10 +255,10 @@ exports.deleteCompanyApproval = async (req, res, next) => {
 // Update approval status and rejection reason with notifications
 exports.updateApprovalStatus = async (req, res) => {
   const { id } = req.params;
-  const { approvalStatus, rejectionReason, adminRemarks } = req.body;
+  const { approvalStatus, rejectionReason, adminRemarks, isReset } = req.body; // Added isReset flag
 
   try {
-    // Validate input
+    // Validate input - modified to allow reset
     if (!approvalStatus || !["Pending", "Approved", "Rejected"].includes(approvalStatus)) {
       return res.status(400).json({ 
         success: false,
@@ -266,6 +266,44 @@ exports.updateApprovalStatus = async (req, res) => {
       });
     }
 
+    // Special handling for reset case
+    if (isReset && approvalStatus === "Pending") {
+      const resetApproval = await CompanyApprovalDetails.findOneAndUpdate(
+        { _id: id, isDeleted: false },
+        { 
+          approvalStatus: "Pending",
+          rejectionReason: null, // Clear rejection reason
+          adminRemarks: adminRemarks || undefined,
+          statusUpdatedAt: new Date()
+        },
+        { new: true, runValidators: true }
+      ).populate('student', 'studentId studentName email');
+
+      if (!resetApproval) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Approval record not found" 
+        });
+      }
+
+      // Send notification about reset to pending
+      await sendStatusChangeNotification(
+        resetApproval.student._id,
+        resetApproval.student.studentName,
+        resetApproval.companyName,
+        "Pending",
+        "Status was reset by admin",
+        resetApproval._id
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Approval status reset to Pending successfully",
+        data: resetApproval
+      });
+    }
+
+    // Original approval/rejection logic
     if (approvalStatus === "Rejected" && !rejectionReason) {
       return res.status(400).json({ 
         success: false,
@@ -273,15 +311,22 @@ exports.updateApprovalStatus = async (req, res) => {
       });
     }
 
-    // Find and update the approval
+    const updateData = {
+      approvalStatus,
+      statusUpdatedAt: new Date(),
+      adminRemarks: adminRemarks || undefined
+    };
+
+    // Only set rejection reason if status is Rejected
+    if (approvalStatus === "Rejected") {
+      updateData.rejectionReason = rejectionReason;
+    } else {
+      updateData.rejectionReason = null; // Clear if approving
+    }
+
     const companyApproval = await CompanyApprovalDetails.findOneAndUpdate(
       { _id: id, isDeleted: false },
-      { 
-        approvalStatus,
-        rejectionReason: approvalStatus === "Rejected" ? rejectionReason : null,
-        adminRemarks: adminRemarks || undefined,
-        statusUpdatedAt: new Date()
-      },
+      updateData,
       { new: true, runValidators: true }
     ).populate('student', 'studentId studentName email');
 
@@ -292,7 +337,7 @@ exports.updateApprovalStatus = async (req, res) => {
       });
     }
 
-    // Send notification to student about status change
+    // Send notification
     await sendStatusChangeNotification(
       companyApproval.student._id,
       companyApproval.student.studentName,
@@ -304,12 +349,12 @@ exports.updateApprovalStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Approval status updated successfully",
+      message: `Approval status ${approvalStatus.toLowerCase()} successfully`,
       data: companyApproval
     });
 
   } catch (error) {
-    logger.error(`[PUT /api/company-approvals/${id}/status] Error: ${error.message}`);
+    logger.error(`Error updating approval status: ${error.message}`);
     res.status(500).json({ 
       success: false,
       message: "Internal server error" 
