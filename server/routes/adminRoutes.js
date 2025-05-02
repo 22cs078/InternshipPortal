@@ -1,4 +1,3 @@
-// routes/adminRoutes.js
 const express = require("express");
 const {
   validateToken,
@@ -13,7 +12,7 @@ const {
   getAllAdmins,
   getAdminById,
   changePassword,
-  fetchAdmin,
+  fetchAdminByEmail,  // Changed from fetchAdmin
   restoreAdmin
 } = require("../controllers/adminController");
 
@@ -67,12 +66,12 @@ router.get(
   getAdminById
 );
 
-// Fetch admin by email
+// Fetch admin by email (changed endpoint to match controller)
 router.get(
-  "/fetch",
+  "/fetch/by-email",  
   validateToken,
   checkRoleAccess(["admin"]),
-  fetchAdmin
+  fetchAdminByEmail  
 );
 
 // Route for changing password
