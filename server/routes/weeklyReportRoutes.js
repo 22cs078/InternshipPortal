@@ -11,7 +11,8 @@ const {
   getGuideWeeklyReports,
   getGuideWeeklyReportById,
   updateGuideApprovalStatus,
-  addGuideMarks
+  addGuideMarks,
+  deleteGuideWeeklyReport
 } = require("../controllers/WeeklyReportController");
 
 const validateReport = require("../middleware/validateWeeklyReport");
@@ -92,6 +93,14 @@ router.get(
   validateToken,
   checkRoleAccess(["guide"]),
   getGuideWeeklyReports
+);
+
+// Delete a weekly report
+router.delete(
+  "/guide/reports/:id",
+  validateToken,
+  checkRoleAccess(["guide"]),
+  deleteGuideWeeklyReport
 );
 
 // Get a single weekly report for assigned student (Guide only)

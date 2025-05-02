@@ -911,3 +911,53 @@ const notifyStudentAboutGuideMarks = async (studentId, studentName, projectTitle
     logger.error(`Error sending guide evaluation notification: ${error.message}`);
   }
 };
+
+// @desc   Guide-specific soft delete for weekly reports
+// @route  DELETE /api/weeklyReport/guide/reports/:id
+exports.deleteGuideWeeklyReport = async (req, res, next) => {
+  try {
+    const guideId = req.user._id;
+    const reportId = req.params.id;
+
+    // Verify the report belongs to a student assigned to this guide
+    const internship = await StudentInternship.findOne({
+      guide: guideId,
+      weeklyReports: reportId,
+      isDeleted: false
+    });
+
+    if (!internship) {
+      return res.status(404).json({
+        success: false,
+        message: "Weekly report not found or not assigned to you"
+      });
+    }
+
+    // Find and soft delete the report
+    const report = await WeeklyReport.findOneAndUpdate(
+      { _id: reportId, isDeleted: false },
+      { 
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: guideId
+      },
+      { new: true }
+    );
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Weekly report not found"
+      });
+    }
+
+    logger.info(`[DELETE /api/weeklyReport/guide/reports/${reportId}] Deleted by guide ${guideId}`);
+    res.status(200).json({
+      success: true,
+      message: "Weekly report deleted successfully"
+    });
+  } catch (error) {
+    logger.error(`[DELETE /api/weeklyReport/guide/reports/${req.params.id}] Error: ${error.message}`);
+    next(error);
+  }
+};

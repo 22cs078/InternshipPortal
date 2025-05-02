@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import {
   AlertCircle,
@@ -47,7 +47,7 @@ const GuideWeeklyReports = () => {
   const [showMarksModal, setShowMarksModal] = useState(false);
   const [marks, setMarks] = useState("");
   const [reportForMarks, setReportForMarks] = useState(null);
-
+ const printRef = useRef(null);
   // Helper function to get status color
   const getStatusColor = (status) => {
     switch (status) {
@@ -60,6 +60,120 @@ const GuideWeeklyReports = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const openRejectionModal = (id) => {
+    setCurrentReportId(id);
+    setRejectionReason("");
+    setShowRejectionModal(true);
+  };
+
+  const closeRejectionModal = () => {
+    setShowRejectionModal(false);
+    setCurrentReportId(null);
+    setRejectionReason("");
+  };
+
+  const submitRejection = async () => {
+    if (rejectionReason.trim()) {
+      await handleUpdateStatus(currentReportId, "Rejected", rejectionReason);
+      closeRejectionModal();
+    }
+  };
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    if (reports.length === 0) return;
+
+    // Define CSV headers for weekly reports
+    const headers = [
+      "S.No",
+      "Student Name",
+      "Project Title",
+      "Week",
+      "Date Submitted",
+      "Status",
+      "Marks",
+    ];
+
+    // Map data to CSV rows
+    const data = reports.map((report, index) => [
+      index + 1,
+      report.studentName,
+      report.projectTitle,
+      `Week ${report.reportWeek}`,
+      new Date(report.createdAt).toLocaleDateString(),
+      report.approvalStatus,
+      report.marks || "Not graded",
+    ]);
+
+    // Create and download CSV
+    const csvContent = [
+      headers.join(","),
+      ...data.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `weekly_reports_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Print function
+  const handlePrint = () => {
+    if (!printRef.current) return;
+  
+    const printContents = printRef.current.innerHTML;
+    const originalContents = document.body.innerHTML;
+  
+    // Create a styled print version
+    const printStyles = `
+      <style>
+        body { font-family: Arial, sans-serif; }
+        h1 { color: #1e40af; text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #e5e7eb; color: #4b5563; font-weight: bold; text-align: left; padding: 10px; }
+        td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
+        .print-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .print-date { text-align: right; color: #6b7280; }
+        .print-footer { margin-top: 30px; text-align: center; color: #6b7280; font-size: 12px; }
+      </style>
+    `;
+  
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Weekly Reports - Print View</title>
+          ${printStyles}
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>Weekly Reports</h1>
+            <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
+          </div>
+          ${printContents}
+          <div class="print-footer">
+            <p>© ${new Date().getFullYear()} Weekly Reports System</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Add slight delay to ensure content is fully loaded
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   // Sort icon component
@@ -995,7 +1109,7 @@ const GuideWeeklyReports = () => {
           {reports.length > 0 && (
             <div className="mt-4 text-right">
               <Button
-                onClick={() => {}}
+                onClick={exportToCSV}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 mr-2 flex items-center inline-flex"
               >
                 <svg
@@ -1015,7 +1129,7 @@ const GuideWeeklyReports = () => {
                 Export to CSV
               </Button>
               <Button
-                onClick={() => {}}
+                onClick={handlePrint}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-200 flex items-center inline-flex"
               >
                 <svg
@@ -1042,11 +1156,8 @@ const GuideWeeklyReports = () => {
             showRejectionModal={showRejectionModal}
             rejectionReason={rejectionReason}
             setRejectionReason={setRejectionReason}
-            closeRejectionModal={() => setShowRejectionModal(false)}
-            submitRejection={() => {
-              handleUpdateStatus(currentReportId, "Rejected", rejectionReason);
-              setShowRejectionModal(false);
-            }}
+            closeRejectionModal={closeRejectionModal}
+            submitRejection={submitRejection}
             actionLoading={actionLoading}
           />
           <DetailsModal />
